@@ -2,18 +2,13 @@ import streamlit as st
 from PIL import Image
 import torch
 import torchvision.transforms as transforms
-from torchvision import models
 
-# Загрузка сохраненной модели (state_dict)
-model_path = 'improved_model.pth'
+# Загрузка сохраненной полной модели
+model_path = 'improved_model_full.pth'
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-# Воссоздание архитектуры модели
-model = models.resnet18(pretrained=True)  # Убедитесь, что архитектура совпадает с обученной моделью
-model.fc = torch.nn.Linear(model.fc.in_features, 23)  # 23 класса (ваши породы)
-
-# Загрузка весов в модель
-model.load_state_dict(torch.load(model_path, map_location=device))
+# Загрузка модели
+model = torch.load(model_path, map_location=device)
 model.eval()  # Переводим модель в режим оценки
 
 # Определите трансформации для обработки изображения
@@ -57,3 +52,4 @@ if uploaded_file is not None:
     st.write("### Predictions:")
     for i in range(5):
         st.write(f"{classes[top5_classes[i]]}: {top5_prob[i].item() * 100:.2f}%")
+
