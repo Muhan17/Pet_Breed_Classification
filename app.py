@@ -1,55 +1,55 @@
 import streamlit as st
-import torch
-from torchvision import models
 from PIL import Image
-from torchvision import transforms
+import torch
+import torchvision.transforms as transforms
+from torchvision import models
 
-# Создайте архитектуру модели
-model = models.resnet18(pretrained=False)  # Создаем базовую архитектуру ResNet18
-model.fc = torch.nn.Linear(model.fc.in_features, 23)  # Укажите число классов (например, 23)
+# Загрузка сохраненной модели
+model_path = 'improved_model.pth'
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-# Загрузите сохранённые веса
-model.load_state_dict(torch.load('improved_model.pth', map_location=torch.device('cpu')))
-model.eval()  # Перевод модели в режим оценки
+# Создайте модель с той же архитектурой, что и обученная модель
+model = models.resnet50(pretrained=False)  # Используем ResNet50, если это была ваша основа
+model.fc = torch.nn.Linear(model.fc.in_features, 37)  # 37 классов для Oxford Pets Dataset
+model.load_state_dict(torch.load(model_path, map_location=device))
+model.eval()
 
-# Определите трансформации для входных изображений
+# Определите трансформации для обработки изображения
 transform = transforms.Compose([
-    transforms.Resize((224, 224)),  # Изменение размера изображения
-    transforms.ToTensor(),  # Преобразование в тензор
-    transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])  # Нормализация
+    transforms.Resize((224, 224)),
+    transforms.ToTensor(),
+    transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
 ])
 
-# Streamlit интерфейс
+# Список классов (породы животных)
+classes = [
+    "Abyssinian", "Bengal", "Birman", "Bombay", "British_Shorthair", "Egyptian_Mau", 
+    "Maine_Coon", "Persian", "Ragdoll", "Russian_Blue", "Siamese", "Sphynx",
+    # Добавьте оставшиеся классы...
+]
+
+# Интерфейс Streamlit
 st.title("Pet Breed Classifier")
-st.write("Upload an image of a pet, and the model will classify its breed!")
+st.write("Upload an image of a pet, and the model will classify its breed along with probabilities.")
 
 # Загрузка изображения
-uploaded_file = st.file_uploader("Upload a .jpg or .png image", type=["jpg", "jpeg", "png"])
+uploaded_file = st.file_uploader("Choose an image...", type=["jpg", "jpeg", "png"])
 
 if uploaded_file is not None:
-    # Открыть изображение
-    image = Image.open(uploaded_file)
+    # Открываем изображение
+    image = Image.open(uploaded_file).convert("RGB")
     st.image(image, caption="Uploaded Image", use_column_width=True)
 
-    # Преобразовать изображение для модели
-    img_tensor = transform(image).unsqueeze(0)  # Добавить batch размер
+    # Обрабатываем изображение для модели
+    input_tensor = transform(image).unsqueeze(0).to(device)
 
-    # Выполнить предсказание
+    # Предсказание
     with torch.no_grad():
-        outputs = model(img_tensor)
-        probabilities = torch.nn.functional.softmax(outputs[0], dim=0)  # Вероятности классов
-        top_probs, top_indices = torch.topk(probabilities, 3)  # Топ-3 вероятности
+        outputs = model(input_tensor)
+        probabilities = torch.nn.functional.softmax(outputs[0], dim=0)
 
-    # Список классов
-    breeds = [
-        'abyssinian', 'american shorthair', 'beagle', 'boxer', 'bulldog',
-        'chihuahua', 'corgi', 'dachshund', 'german shepherd', 'golden retriever',
-        'husky', 'labrador', 'maine coon', 'mumbai cat', 'persian cat',
-        'pomeranian', 'pug', 'ragdoll cat', 'rottwiler', 'shiba inu',
-        'siamese cat', 'sphynx', 'yorkshire terrier'
-    ]
-
-    # Отобразить результаты
-    st.subheader("Top-3 Predictions:")
-    for i in range(3):
-        st.write(f"{breeds[top_indices[i]]}: {top_probs[i].item() * 100:.2f}%")
+    # Отображаем результаты
+    top5_prob, top5_classes = torch.topk(probabilities, 5)
+    st.write("### Predictions:")
+    for i in range(5):
+        st.write(f"{classes[top5_classes[i]]}: {top5_prob[i].item() * 100:.2f}%")
