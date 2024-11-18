@@ -4,15 +4,17 @@ import torch
 import torchvision.transforms as transforms
 from torchvision import models
 
-# Загрузка сохраненной модели
+# Загрузка сохраненной модели (state_dict)
 model_path = 'improved_model.pth'
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-# Создайте модель с той же архитектурой, что и обученная модель
-model = models.resnet50(pretrained=False)  # Используем ResNet50, если это была ваша основа
-model.fc = torch.nn.Linear(model.fc.in_features, 37)  # 37 классов для Oxford Pets Dataset
+# Воссоздание архитектуры модели
+model = models.resnet18(pretrained=True)  # Убедитесь, что архитектура совпадает с обученной моделью
+model.fc = torch.nn.Linear(model.fc.in_features, 23)  # 23 класса (ваши породы)
+
+# Загрузка весов в модель
 model.load_state_dict(torch.load(model_path, map_location=device))
-model.eval()
+model.eval()  # Переводим модель в режим оценки
 
 # Определите трансформации для обработки изображения
 transform = transforms.Compose([
@@ -23,9 +25,11 @@ transform = transforms.Compose([
 
 # Список классов (породы животных)
 classes = [
-    "Abyssinian", "Bengal", "Birman", "Bombay", "British_Shorthair", "Egyptian_Mau", 
-    "Maine_Coon", "Persian", "Ragdoll", "Russian_Blue", "Siamese", "Sphynx",
-    # Добавьте оставшиеся классы...
+    'abyssinian', 'american shorthair', 'beagle', 'boxer', 'bulldog',
+    'chihuahua', 'corgi', 'dachshund', 'german shepherd', 'golden retriever',
+    'husky', 'labrador', 'maine coon', 'mumbai cat', 'persian cat',
+    'pomeranian', 'pug', 'ragdoll cat', 'rottwiler', 'shiba inu',
+    'siamese cat', 'sphynx', 'yorkshire terrier'
 ]
 
 # Интерфейс Streamlit
